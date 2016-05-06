@@ -1,0 +1,34 @@
+#!/bin/bash
+PS1_OLD="$PS1"
+PS1="[\u@\H\[\033[32m\]\w]\[\033[0m\]\[\033[1;33m\]$ \[\033[0m\]"
+export PROMPT_COMMAND='PS1="$PS1"'
+
+prompt_on_top() {
+  tput cup 0 0
+  tput el
+  tput el1
+}
+
+@(){
+  clear && echo "" && "$@"
+}
+
+pre_cmd() {
+  if [ "$BASH_COMMAND" = "$PROMPT_COMMAND" ] || [ -n "$COMP_LINE" ]; then
+    return
+  fi
+  if [[ "$(uname -a)" =~ "Darwin" ]]; then 
+    printf "\33[2J" 
+  else
+    echo ""
+    clear 
+  fi
+}
+
+unsticky(){
+  trap "" DEBUG 
+  export PS1="$PS1_OLD"
+}
+
+PROMPT_COMMAND="prompt_on_top"
+trap "pre_cmd" DEBUG
