@@ -7,13 +7,12 @@ prompt_on_top() {
   tput el1
 }
 
-pre_cmd() {
+sticky_hook() {
   if [[ $STICK == "0" ]] || [ "$BASH_COMMAND" = "$PROMPT_COMMAND" ] || [ -n "$COMP_LINE" ]; then
     return
   fi
   if [[ "$(uname -a)" =~ "Darwin" ]]; then  # OSX only
-    clear 
-    echo -e "\n"
+    clear && echo ""
   else
     printf "\33[2J" 
   fi
@@ -32,4 +31,4 @@ unstick(){
   export PROMPT_COMMAND='PS1="$PS1"'
 }
 
-trap pre_cmd DEBUG
+trap sticky_hook DEBUG
