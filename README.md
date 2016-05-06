@@ -7,19 +7,20 @@ Sticky prompt for bash
 
 put this in `~/.bashrc`:
 
-    alias sticky="source path/to/sticky"
+    source path/to/sticky
 
 Then whenever you want your prompt to stick to the top:
 
-    $ sticky
+    $ stick
 
 And to unstick:
 
-    $ unsticky
+    $ unstick
 
 ## OSX note:
 
-osx iterm2-users only:
+osx iterm2-users only, after typing `stick` on 1st time run:
 
-  * open preferences (applekey+,)
-  * uncheck 'Insert newline before start of command prompt if needed' in the Terminal-tab
+  $ trap pre_cmd DEBUG
+
+not sure why this is needed
