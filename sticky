@@ -12,8 +12,8 @@ pre_cmd() {
     return
   fi
   if [[ "$(uname -a)" =~ "Darwin" ]]; then  # OSX only
-    echo ""
     clear 
+    echo -e "\n"
   else
     printf "\33[2J" 
   fi
