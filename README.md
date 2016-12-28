@@ -13,22 +13,18 @@ put this in `~/.bashrc`:
 
 > NOTE: the optional lines will display gitbranch in prompt
 
-# Why 
-
-Bash equalivent of lodash/underscore for interactive purposes, plus:
-
-* promote command stacking instead of writing oneliners
-
-# .stick
-
-    $ .push mongo 192.169.0.5:9999/foo --eval
-    mongo $ db.foo.find({})
-
 # .stick & .push & .pop 
 
 Always keeps your prompt at the top. and allows you to type less (commandstacking):
 
-*curl*:
+*mongodb*:
+ 
+    $ .stick 
+    $ .push mongo 192.169.0.5:9999/foo --eval
+    mongo $ db.foo.find({})
+
+
+webrequest using *curl*:
     
     $ .stick
     $ .push curl -H 'Content-Type: application/json' --user admin:password -v 
@@ -36,12 +32,6 @@ Always keeps your prompt at the top. and allows you to type less (commandstackin
     +  curl -H 'Content-Type: application/json' -v -X POST http://foo.com '{}'
     ..(curl output)..
  
-*mongodb*:
- 
-    $ .stick 
-    $ .push mongo 192.169.0.5:9999/foo --eval
-    mongo $ db.foo.find({})
-
 > NOTE: use `.pop` to remove the stacked command
 > NOTE: type `_` to recall the stacked command 
 > NOTE: type `.unstick` to undo stick-to-top-prompt
@@ -114,3 +104,6 @@ template > markdown > html:
 * small functions
 * offline utilities  (with markdown as exception)
 * make use of installed devlangs (python/perl/awk)
+* bash golf 
+* bash equalivent of lodash/underscore with interactive convenience
+
