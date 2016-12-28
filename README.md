@@ -1,4 +1,4 @@
-(beta) interactive toolbelt for bash hipsters
+interactive bash toolbelt for webdevelopment hipsters
 
 <img src="https://media.giphy.com/media/ZcqHDQUJm1nZC/giphy.gif" width="320"/>
 
@@ -21,39 +21,12 @@ Bash equalivent of lodash/underscore for interactive purposes, plus:
 
 # .stick
 
-Always keep your prompt at the top. Handy for mysql/mongodb queries etc.
+    $ .push mongo 192.169.0.5:9999/foo --eval
+    mongo $ db.foo.find({})
 
-    [username@peach/home/username] (master) $ ls -la
-    drwxr-xr-x  271 username  www-data   12K Dec 28 08:46 projects
-    drwxrwxrwx   27 username  username       4.0K Dec 27 18:07 tmp
-    drwxr-xr-x    3 username  username        16K Dec 27 17:24 Pictures
-    drwxr-xr-x 3894 username  username       132K Dec 26 22:05 .npm
-    drwx------    4 username  username       4.0K Dec 26 21:49 .gconf
-    drwxr-xr-x   33 username  username       4.0K Dec 26 21:49 .cache
-    drwxr-xr-x   57 username  username       104K Dec 24 18:02 Downloads
-    drwx------    8 username  username       4.0K Dec 24 00:21 .Skype
-    drwxr-xr-x    7 username  username       4.0K Dec 21 08:19 .nvm
-    drwxr-xr-x    2 username  username       4.0K Dec 16 20:39 .dpd
-    drwxr-xr-x   24 username  username       4.0K Dec 16 12:45 .gimp-2.8
-    drwx------    2 username  username       4.0K Dec 13 19:01 .git-credential-cache
-    drwxr-xr-x    3 username  username       4.0K Dec 12 18:20 .gnupg
-    drwxr-xr-x    5 username  username       4.0K Dec 12 11:01 Audio
-    drwx------   47 username  username       4.0K Dec  4 00:40 .config
-    drwx------    2 username  username       4.0K Nov 25 14:54 .docker
-    drwxr-xr-x   12 username  username       4.0K Nov 24 11:12 dotfiles
-    drwxr-xr-x    4 username  username       4.0K Nov 21 10:43 .wine
-    drwxr-xr-x    3 username  username       4.0K Nov 11 13:47 sqlpad
-    drwxr-xr-x    6 username  username       4.0K Nov  6 11:47 .renoise
+# .stick & .push & .pop 
 
-> NOTE: type '.unstick' to undo stick-to-top
-
-# .push
-# .pop
-# _
-
-Easy commandstacking = readable oneliners
-
-> NOTE: use `.pop` to remove the pushed command
+Always keeps your prompt at the top. and allows you to type less (commandstacking):
 
 *curl*:
     
@@ -69,6 +42,10 @@ Easy commandstacking = readable oneliners
     $ .push mongo 192.169.0.5:9999/foo --eval
     mongo $ db.foo.find({})
 
+> NOTE: use `.pop` to remove the stacked command
+> NOTE: type `_` to recall the stacked command 
+> NOTE: type `.unstick` to undo stick-to-top-prompt
+
 # .json.get
 
 Evaluate a key-path from a json-file or string
@@ -79,11 +56,16 @@ Evaluate a key-path from a json-file or string
     $ .json.get '{"foo":['one','two']}' foo.0
     one
 
-# .pretty
-# .prettylines
+# .pretty & .prettylines
 
-    $ cat foo.json | .pretty
+    $ cat singleline.json | .pretty
+    {
+      "foo":"bar"
+    }
     $ cat foo.json | .prettylines | .markdown
+        1 {
+        2   "foo":"bar"
+        3 }
 
 # .markdown
 # .markdown.render
@@ -97,8 +79,21 @@ wrap template around stdin & env-vars.
 
 > NOTE: piped content is substituted by '%s'
 
-    $ world="WORLD"; echo "hello ${world}"
-    hello WORLD
+compose simple json:
+
+    $ foo=bar
+    $ echo -n '{ "foo": "%s", "user":"${USER} ${foo}" }' > template.json
+    $ date | .wrap "$(<template.json)" | .pretty
+    {
+       "user" : "foo bar",
+       "date" : "Wed Dec 28 21:40:11 CET 2016"
+    }
+
+REST json-post:
+
+    $ date | .wrap "$(<template.json)" | curl -X POST http://localhost:3000/ping -d @-
+
+template > markdown > html:
 
     $ ls -la | .markdown | .wrap '# ls -la output\n\n%s ${USER}' | .markdown.render
     <h1>ls -la output</h1>
@@ -112,15 +107,6 @@ wrap template around stdin & env-vars.
     <p>
       Wed Dec 28 21:26:44 CET 2016 john
     </p>
-
-    $ echo -n '{ "foo": "%s", "user":"${USER}" }' > template.json
-    $ date | .wrap "$(<template.json)" | .pretty
-    {
-       "user" : "foo",
-       "date" : "Wed Dec 28 21:40:11 CET 2016"
-    }
-
-    $ date | .wrap "$(<template.json)" | curl -X POST http://localhost:3000/ping -d @-
 
 # project scope:
 
