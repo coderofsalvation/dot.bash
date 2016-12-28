@@ -33,6 +33,12 @@ on ()
     done
 }
 
+last () 
+{ 
+    [[ ! -n $1 ]] && return 1;
+    echo "$(eval "echo \${$1[@]:(-1)}")"
+}
+
 json_decode () 
 { 
     function throw () 
@@ -205,7 +211,8 @@ json_decode ()
     };
     varname="$1";
     code="$code$( sed 'N;s/\n//g' | json_tokenize | json_parse | awk '{print "'$varname'"$0}')";
-    code="$(echo -e "$code" | sed  's/.*\[\].*//g;s/\t/=/g;s/",/./g;s/[,.]"/./g;s/.*=[{\[].*//g;s/\"\]=/]=/g;s/\]=/"\]=/g' | sed -r 's/([A-Za-z_0-9])([\.-])([A-Za-z_0-9])"]/\1-\3"]/g' )";
+    code="$(echo -e "$code" | sed  's/.*\[\].*//g;s/\t/=/g;s/","\?/./g;s/[,.]"/./g;s/.*=[{\[].*//g;s/\"\]=/]=/g;s/\]=/"\]=/g' )";
+    [[ -n "$2" ]] && code="$code\necho echo \${$varname['$2']}";
     eval "$code"
 }
 
@@ -224,9 +231,10 @@ _(){
 }
 
 .push(){
+  PS1_OLD="$PS1"
   CMD_SHORT=$1
   CMD=$@
-  export PS1="$PS1_OLD""\[\033[1;34m\]$CMD_SHORT \$ \[\033[0m\]"
+  export PS1="\u@\H \[\033[1;34m\]$CMD_SHORT \$ \[\033[0m\]"
 }
 
 .pop(){
@@ -236,6 +244,7 @@ _(){
 
 STICK=0
 CMD=""
+PS1_OLD=""
 
 prompt_on_top(){
   tput cup 0 0
@@ -266,22 +275,70 @@ sticky_hook(){
   export PROMPT_COMMAND='PS1="$PS1"'
 }
 
+trap sticky_hook DEBUG
+
+.wrap(){
+  echo "$(printf "$1" "$(cat)" )" | .template
+}
+
 .gitbranch(){
   branch="$( git branch 2>&1 | grep "^*" | sed 's/ //g;s/^*//g'  )"
   [[ ${#branch} > 0 ]] && echo "($branch)"
 }
 
+.pretty(){
+  while IFS='' read line; do
+    # check json
+    first=${line:0:1}
+    last=${line:$((${#line}-1))}
+    if [[ $first == "{" || $first == "[" ]]; then
+      if [[ "$last" == "}" || "$last" == "]" ]]; then
+        echo "$line" | json_pp
+        continue
+      fi
+    fi
+    echo "$line"
+  done
+}
+
+
+.prettylines(){
+  cat | .pretty | cat -n
+}
+
+.markdown(){
+  cat | awk '{ print "    "$0 }'
+}
+
+.template(){
+  if [[ -n "$1" ]]; then
+    printf "$1" "$(cat)" > "$tmpfile".input
+  else
+    echo -n "$(cat)" > "$tmpfile".input
+  fi
+  awk '{while(match($0,"[$]{[^}]*}")) {var=substr($0,RSTART+2,RLENGTH -3);gsub("[$]{"var"}",ENVIRON[var])}}1' < $tmpfile.input
+  rm "$tmpfile".input
+}
+
+.markdown.render(){
+  cat - > /tmp/.markdown
+  curl -s -X POST -H "Content-Type: text/x-markdown" --data-binary @/tmp/.markdown https://api.github.com/markdown/raw
+}
 
 .json.get(){
   if [[ ! -n "$2" ]]; then
     echo "usage: .json.get <file.json> <key>"
     return 0
   fi
-  if [[ ! -n "$1" ]]; then
-    echo "file not found: "$1""
-    return 0
-  fi
   declare -A json
-  cat "$1" | json_decode json
-  echo ${json[$2]}
+  if [[ ${1:0:1} == "{" ]]; then
+    echo "$1" | json_decode json "$2"
+  else
+    if [[ ! -n "$1" ]]; then
+      echo "file not found: "$1""
+      return 0
+    fi
+    cat "$1" | json_decode json "$2"
+  fi
 }
+

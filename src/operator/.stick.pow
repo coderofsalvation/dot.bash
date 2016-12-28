@@ -1,5 +1,6 @@
 STICK=0
 CMD=""
+PS1_OLD=""
 
 prompt_on_top()
   tput cup 0 0

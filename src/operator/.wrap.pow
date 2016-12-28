@@ -1,0 +1,2 @@
+.wrap()
+  echo "$(printf "$1" "$(cat)" )" | .template

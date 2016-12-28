@@ -48,30 +48,83 @@ Always keep your prompt at the top. Handy for mysql/mongodb queries etc.
 > NOTE: type '.unstick' to undo stick-to-top
 
 # .push
+# .pop
+# _
 
 Easy commandstacking = readable oneliners
 
 > NOTE: use `.pop` to remove the pushed command
 
-### Example: Curl request
+*curl*:
     
     $ .stick
     $ .push curl -H 'Content-Type: application/json' --user admin:password -v 
-    curl $ 
-    
-the prompt changed, and the pushed command will be substituted by `_`:
-
     curl $ _ -X POST http://foo.com --data '{}'
     +  curl -H 'Content-Type: application/json' -v -X POST http://foo.com '{}'
     ..(curl output)..
-
-### Example: mongodb
-
+ 
+*mongodb*:
+ 
     $ .stick 
     $ .push mongo 192.169.0.5:9999/foo --eval
     mongo $ db.foo.find({})
 
 # .json.get
 
-    $ .json.get package.json version
-    1.2.3
+Evaluate a key-path from a json-file or string
+
+    $ .json.get package.json repository.type 
+    git 
+
+    $ .json.get '{"foo":['one','two']}' foo.0
+    one
+
+# .pretty
+# .prettylines
+
+    $ cat foo.json | .pretty
+    $ cat foo.json | .prettylines | .markdown
+
+# .markdown
+# .markdown.render
+    
+    $ cat foo.json | .prettylines | .markdown
+    $ cat foo.json | .prettylines | .markdown | .wrap "# json ${USER} output\n\n%s' | .markdown.render > foo.html
+
+# .wrap
+
+wrap template around stdin & env-vars.
+
+> NOTE: piped content is substituted by '%s'
+
+    $ world="WORLD"; echo "hello ${world}"
+    hello WORLD
+
+    $ ls -la | .markdown | .wrap '# ls -la output\n\n%s ${USER}' | .markdown.render
+    <h1>ls -la output</h1>
+    <pre>
+    total 757M
+    drwx------  2 sqz  sqz  4.0K Dec 28 21:25 vbjdwRv
+    drwxrwxrwt 33 root root  48K Dec 28 21:25 .
+    drwx------  2 sqz  sqz  4.0K Dec 28 18:09 vZIos2X
+    drwx------  2 sqz  sqz  4.0K Dec 28 17:15 vzwsR4d
+    </pre>
+    <p>
+      Wed Dec 28 21:26:44 CET 2016 john
+    </p>
+
+    $ echo -n '{ "foo": "%s", "user":"${USER}" }' > template.json
+    $ date | .wrap "$(<template.json)" | .pretty
+    {
+       "user" : "foo",
+       "date" : "Wed Dec 28 21:40:11 CET 2016"
+    }
+
+    $ date | .wrap "$(<template.json)" | curl -X POST http://localhost:3000/ping -d @-
+
+# project scope:
+
+* wrappers 
+* small functions
+* offline utilities  (with markdown as exception)
+* make use of installed devlangs (python/perl/awk)

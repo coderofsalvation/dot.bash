@@ -1,0 +1,2 @@
+.prettylines()
+  cat | .pretty | cat -n
