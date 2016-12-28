@@ -9,7 +9,6 @@ put this in `~/.bashrc`:
     [[ -t 0  ]] && { 
       source path/to/dot.bash 
       PS1="[\u@\H\[\033[34m\]\w]\[\033[0m\] \$(.gitbranch) \[\033[1;34m\]$ \[\033[0m\]" # optional
-      export PROMPT_COMMAND='PS1="$PS1"'                                                # optional 
     }    
 
 > NOTE: the optional lines will display gitbranch in prompt
