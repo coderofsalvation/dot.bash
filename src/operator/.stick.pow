@@ -1,0 +1,27 @@
+STICK=0
+CMD=""
+
+prompt_on_top()
+  tput cup 0 0
+  tput el
+  tput el1
+
+sticky_hook()
+  if $STICK == "0" || "$BASH_COMMAND" == "$PROMPT_COMMAND" || -n "$COMP_LINE"
+    return
+  if "$(uname -a)" =~ "Darwin"
+    clear && echo ""
+  else
+    printf "\33[2J" 
+
+.stick()
+  STICK=1
+  PS1_OLD="$PS1"
+  export PROMPT_COMMAND="prompt_on_top"
+
+.unstick()
+  STICK=0
+  export PS1="$PS1_OLD"
+  export PROMPT_COMMAND='PS1="$PS1"'
+
+trap sticky_hook DEBUG

@@ -1,0 +1,3 @@
+.pop()
+  CMD=""
+  export PS1="$PS1_OLD"

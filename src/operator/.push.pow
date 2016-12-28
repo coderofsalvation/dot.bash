@@ -1,0 +1,4 @@
+.push()
+  CMD_SHORT=$1
+  CMD=$@
+  export PS1="$PS1_OLD""\[\033[1;34m\]$CMD_SHORT \$ \[\033[0m\]"

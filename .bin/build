@@ -1,0 +1,3 @@
+#!/bin/bash
+powscript --sourceable --compile src/dot.pow > dot.bash
+chmod 755 dot.bash

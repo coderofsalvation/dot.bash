@@ -1,0 +1,3 @@
+_()
+  if -n $CMD
+    set -x; ${CMD} "$@"; set +x

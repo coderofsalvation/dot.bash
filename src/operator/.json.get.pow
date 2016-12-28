@@ -1,0 +1,11 @@
+
+.json.get()
+  if ! -n $2
+    echo "usage: .json.get <file.json> <key>"
+    return 0
+  if ! -n $1
+    echo "file not found: $1"
+    return 0
+  declare -A json 
+  cat $1 | json_decode json 
+  echo ${json[$2]} | cat

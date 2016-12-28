@@ -1,0 +1,7 @@
+set +e # no need to exit shell on error 
+
+# symlink complete bugfix: http://askubuntu.com/questions/155696/how-to-tab-complete-directories-when-in-symlinked-directory                                                                    
+{
+  complete -r cd
+} &>/dev/null
+

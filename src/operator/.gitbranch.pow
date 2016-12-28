@@ -1,0 +1,3 @@
+.gitbranch()
+  branch="$( git branch 2>&1 | grep "^*" | sed 's/ //g;s/^*//g'  )"
+  [[ ${#branch} > 0 ]] && echo "($branch)"

@@ -1,0 +1,9 @@
+#!/usr/bin/env powscript 
+require 'optimizations.pow'
+require 'operator/.pow'
+require 'operator/.push.pow'
+require 'operator/.pop.pow'
+require 'operator/.stick.pow'
+require 'operator/.gitbranch.pow'
+require 'operator/.json.get.pow'
+
