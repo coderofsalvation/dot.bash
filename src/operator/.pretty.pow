@@ -5,6 +5,11 @@
   local last=${str:$((${#str}-1))}
   if $first == "{" || $first == "["       
     if $last == "}" || $last == "]"       
-      echo "$str" | json_pp
-      return 0
+      if which python2 &>/dev/null
+        echo "$str" | python -mjson.tool
+        return 0
+      if which node &>/dev/null
+        node -e "console.log(JSON.stringify(JSON.parse(process.argv[1]), null, 2));" "$str"
+        return 0
+      #echo "$str" | json_pp
   echo "$str"

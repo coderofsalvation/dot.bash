@@ -1,6 +1,5 @@
 #!/usr/bin/env powscript 
 require 'optimizations.pow'
-require 'templates.pow'
 require 'operator/.pubsub.pow'
 require 'operator/_.pow'
 require 'operator/.push.pow'

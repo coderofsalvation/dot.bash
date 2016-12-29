@@ -234,10 +234,6 @@ set +e # no need to exit shell on error
 } &>/dev/null
 
 
-declare -A dottemplates
-dottemplates['json']='{"user":"${USER}@${HOSTNAME}","date":"${datestr}","timestamp":"${timestamp}","output":"%s"}'
-
-
 declare -A LISTENERS
 
 .pub(){
@@ -317,8 +313,15 @@ trap sticky_hook DEBUG
   local last=${str:$((${#str}-1))}
   if [[ $first == "{" || $first == "[" ]]; then
     if [[ "$last" == "}" || "$last" == "]" ]]; then
-      echo "$str" | json_pp
-      return 0
+      if which python2 &>/dev/null; then
+        echo "$str" | python -mjson.tool
+        return 0
+      fi
+      if which node &>/dev/null; then
+        node -e "console.log(JSON.stringify(JSON.parse(process.argv[1]), null, 2));" "$str"
+        return 0
+      fi
+      #echo "$str" | json_pp
     fi
   fi
   echo "$str"
