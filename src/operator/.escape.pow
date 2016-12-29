@@ -1,0 +1,2 @@
+.escape()
+  cat | sed 's/"/\\"/g' | .implode '\\n'

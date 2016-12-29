@@ -1,0 +1,24 @@
+# simple publish/subscribe system
+#
+# usage:
+#
+#   .cleanup(){ echo cleanup; }
+#   .doFoo(){   echo foo;     }
+#
+#   .sub onExit cleanup 
+#   .sub onFoo doFoo
+#   .pub onFoo
+#
+LISTENERS={}
+
+.pub()
+  EVENT=$1; shift; for listener in "${LISTENERS[$EVENT]}"; do eval "$listener $@"; done
+
+.sub()
+  if ! test "${LISTENERS['$1']+isset}"
+    LISTENERS["$1"]=""
+  LISTENERS["$1"]+="$2 " # we can get away with this since functionnames never contain spaces
+
+#trap ".pub onExit SIGINT"  SIGINT
+#trap ".pub onExit SIGTERM" SIGTERM 
+#trap ".pub onExit SIGHUP" SIGHUP

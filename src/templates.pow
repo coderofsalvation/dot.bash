@@ -1,0 +1,3 @@
+dottemplates={}
+dottemplates['json']='{"user":"${USER}@${HOSTNAME}","date":"${datestr}","timestamp":"${timestamp}","output":"%s"}'
+

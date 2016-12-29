@@ -1,2 +1,14 @@
 .wrap()
-  echo "$(printf "$1" "$(cat)" )" | .template
+  echo "$(printf "$*" "$(cat)" )" | .template
+
+completeWrap(cmd,cur)
+  if $cmd == ".wrap"
+    .complete '%s' true
+    .complete '{"user":"${USER}@${HOSTNAME}","timestamp":"'$(date +%s)'","output":"%s"}' true
+    .complete '<output><text><![CDATA[%s]]></output>' true
+
+complete -o noquote -F dotcomplete -o filenames .wrap
+.sub onComplete completeWrap # subscribe to onComplete event
+
+#dotcompletions['.wrap']=
+#dotcompletions['.wrap']+=' foo'

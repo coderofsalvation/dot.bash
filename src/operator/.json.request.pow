@@ -1,0 +1,45 @@
+require_cmd 'curl'
+
+
+.json.request(url)
+  if ! -n $url
+    echo "usage: .json.<method> url [curl_arguments]"
+    return 0
+  shift; 
+  cat | curl -H 'Content-Type: application/json' "$@" "$url" --data @- 
+
+.is.json(str)
+  local json=0
+  local first=${str:0:1}
+  local last=${str:$((${#str}-1))}
+  if $first == "{" || $first == "["       
+    if $last == "}" || $last == "]"       
+      return 0
+  return 1
+
+.json.post(url)
+  local str=$(cat)
+  shift
+  if ! .is.json "$str"
+    str=$(echo "$str" | .wrap '{"user":"${USER}","host":"'$(hostname)'","date":"'$(date | .escape)'","timestamp":"'$(date +%s)'","output":"%s"}' )
+  echo "$str" | .json.request $url -X POST "$@"
+
+.json.put(url)
+  local str=$(cat)
+  shift
+  if ! .is.json "$str"
+    str=$(echo "$str" | .wrap '{"user":"${USER}","host":"'$(hostname)'","date":"'$(date | .escape)'","timestamp":"'$(date +%s)'","output":"%s"}' )
+  echo "$str" | .json.request $url -X PUT "$@"
+
+.json.delete(url)
+  local str=$(cat)
+  shift
+  if ! .is.json "$str"
+    str=$(echo "$str" | .wrap '{"user":"${USER}","host":"'$(hostname)'","date":"'$(date | .escape)'","timestamp":"'$(date +%s)'","output":"%s"}' )
+  echo "$str" | .json.request $url -X DELETE "$@"
+
+.json.options(url)
+  local str=$(cat)
+  if ! .is.json "$str"
+    str=$(echo "$str" | .wrap '{"user":"${USER}","host":"'$(hostname)'","date":"'$(date | .escape)'","timestamp":"'$(date +%s)'","output":"%s"}' )
+  echo "$str" | .json.request $url -X OPTIONS "$@"

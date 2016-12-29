@@ -33,6 +33,11 @@ on ()
     done
 }
 
+isset () 
+{ 
+    [[ ! "${#1}" == 0 ]] && return 0 || return 1
+}
+
 last () 
 { 
     [[ ! -n $1 ]] && return 1;
@@ -216,12 +221,35 @@ json_decode ()
     eval "$code"
 }
 
+empty () 
+{ 
+    [[ "${#1}" == 0 ]] && return 0 || return 1
+}
+
 
 set +e # no need to exit shell on error
 
 {
   complete -r cd
 } &>/dev/null
+
+
+declare -A dottemplates
+dottemplates['json']='{"user":"${USER}@${HOSTNAME}","date":"${datestr}","timestamp":"${timestamp}","output":"%s"}'
+
+
+declare -A LISTENERS
+
+.pub(){
+  EVENT="$1"; shift; for listener in "${LISTENERS[$EVENT]}"; do eval "$listener "$@""; done
+}
+
+.sub(){
+  if ! test "${LISTENERS['$1']+isset}"; then
+    LISTENERS["$1"]=""
+  fi
+  LISTENERS["$1"]+="$2 " # we can get away with this since functionnames never contain spaces
+}
 
 
 _(){
@@ -277,33 +305,54 @@ sticky_hook(){
 
 trap sticky_hook DEBUG
 
-.wrap(){
-  echo "$(printf "$1" "$(cat)" )" | .template
-}
-
 .gitbranch(){
   branch="$( git branch 2>&1 | grep "^*" | sed 's/ //g;s/^*//g'  )"
   [[ ${#branch} > 0 ]] && echo "($branch)"
 }
 
 .pretty(){
-  while IFS='' read line; do
-    # check json
-    first=${line:0:1}
-    last=${line:$((${#line}-1))}
-    if [[ $first == "{" || $first == "[" ]]; then
-      if [[ "$last" == "}" || "$last" == "]" ]]; then
-        echo "$line" | json_pp
-        continue
-      fi
+  local str=$(cat)
+  # check whether json
+  local first=${str:0:1}
+  local last=${str:$((${#str}-1))}
+  if [[ $first == "{" || $first == "[" ]]; then
+    if [[ "$last" == "}" || "$last" == "]" ]]; then
+      echo "$str" | json_pp
+      return 0
     fi
-    echo "$line"
-  done
+  fi
+  echo "$str"
 }
 
+.linenumbers(){
+  cat -n | sed 's/\t/  /g'
+}
 
-.prettylines(){
-  cat | .pretty | cat -n
+.escape(){
+  cat | sed 's/"/\\"/g' | .implode '\\n'
+}
+
+.wrap(){
+  echo "$(printf "$*" "$(cat)" )" | .template
+}
+
+completeWrap(){
+  local cmd="${1}"
+  local cur="${2}"
+  if [[ "$cmd" == ".wrap" ]]; then
+    .complete '%s' true
+    .complete '{"user":"${USER}@${HOSTNAME}","timestamp":"'$(date +%s)'","output":"%s"}' true
+    .complete '<output><text><![CDATA[%s]]></output>' true
+  fi
+}
+
+complete -o noquote -F dotcomplete -o filenames .wrap
+.sub onComplete completeWrap # subscribe to onComplete event
+
+
+.implode(){
+  local separator="${1}"
+  cat | sed ':a;N;$!ba;s/\n/'"$separator"'/g'
 }
 
 .markdown(){
@@ -325,7 +374,7 @@ trap sticky_hook DEBUG
   curl -s -X POST -H "Content-Type: text/x-markdown" --data-binary @/tmp/.markdown https://api.github.com/markdown/raw
 }
 
-.json.get(){
+.json.path(){
   if [[ ! -n "$2" ]]; then
     echo "usage: .json.get <file.json> <key>"
     return 0
@@ -340,5 +389,93 @@ trap sticky_hook DEBUG
     fi
     cat "$1" | json_decode json "$2"
   fi
+}
+
+
+
+.json.request(){
+  local url="${1}"
+  if [[ ! -n "$url" ]]; then
+    echo "usage: .json.<method> url [curl_arguments]"
+    return 0
+  fi
+  shift;
+  cat | curl -H 'Content-Type: application/json' "$@" "$url" --data @-
+}
+
+.is.json(){
+  local str="${1}"
+  local json=0
+  local first=${str:0:1}
+  local last=${str:$((${#str}-1))}
+  if [[ $first == "{" || $first == "[" ]]; then
+    if [[ "$last" == "}" || "$last" == "]" ]]; then
+      return 0
+    fi
+  fi
+  return 1
+}
+
+.json.post(){
+  local url="${1}"
+  local str=$(cat)
+  shift
+  if ! .is.json "$str"; then
+    str=$(echo "$str" | .wrap '{"user":"${USER}","host":"'$(hostname)'","date":"'$(date | .escape)'","timestamp":"'$(date +%s)'","output":"%s"}' )
+  fi
+  echo "$str" | .json.request "$url" -X POST "$@"
+}
+
+.json.put(){
+  local url="${1}"
+  local str=$(cat)
+  shift
+  if ! .is.json "$str"; then
+    str=$(echo "$str" | .wrap '{"user":"${USER}","host":"'$(hostname)'","date":"'$(date | .escape)'","timestamp":"'$(date +%s)'","output":"%s"}' )
+  fi
+  echo "$str" | .json.request "$url" -X PUT "$@"
+}
+
+.json.delete(){
+  local url="${1}"
+  local str=$(cat)
+  shift
+  if ! .is.json "$str"; then
+    str=$(echo "$str" | .wrap '{"user":"${USER}","host":"'$(hostname)'","date":"'$(date | .escape)'","timestamp":"'$(date +%s)'","output":"%s"}' )
+  fi
+  echo "$str" | .json.request "$url" -X DELETE "$@"
+}
+
+.json.options(){
+  local url="${1}"
+  local str=$(cat)
+  if ! .is.json "$str"; then
+    str=$(echo "$str" | .wrap '{"user":"${USER}","host":"'$(hostname)'","date":"'$(date | .escape)'","timestamp":"'$(date +%s)'","output":"%s"}' )
+  fi
+  echo "$str" | .json.request "$url" -X OPTIONS "$@"
+}
+
+.complete(){
+  local str="${1}"
+  local quoted="${2}"
+  if ! empty "$quoted"; then
+    str=$( echo "$str" | .escape | sed 's/ /\\ /g' | .wrap "\"'%s'\"" )
+  fi
+  echo "$str" >> "$tmpfile".dotcompletions
+}
+
+dotcomplete(){
+  COMPREPLY=()   # Array variable storing the possible completions.
+  cur=${COMP_WORDS[COMP_CWORD]}
+  local cmd="${COMP_WORDS[0]}"
+  {
+  :>$tmpfile.dotcompletions # empty completions
+  .pub onComplete "$cmd" "$cur" # fill up completions
+  local dotcompletions="$(<$tmpfile.dotcompletions)"
+  } &>/dev/null
+  if ! empty "$dotcompletions"; then
+    COMPREPLY=( $( compgen -W "$dotcompletions" -- "$cur" ) )
+  fi
+  return 0
 }
 

@@ -1,0 +1,17 @@
+.complete(str,quoted)
+  if ! empty $quoted 
+    str=$( echo "$str" | .escape | sed 's/ /\\ /g' | .wrap "\"'%s'\"" )
+  echo "$str" >> $tmpfile.dotcompletions
+
+dotcomplete()
+  COMPREPLY=()   # Array variable storing the possible completions.
+  cur=${COMP_WORDS[COMP_CWORD]}
+  local cmd="${COMP_WORDS[0]}"
+  {
+  :>$tmpfile.dotcompletions # empty completions
+  .pub onComplete $cmd $cur # fill up completions
+  local dotcompletions="$(<$tmpfile.dotcompletions)"
+  } &>/dev/null
+  if ! empty $dotcompletions 
+    COMPREPLY=( $( compgen -W "$dotcompletions" -- $cur ) )
+  return 0

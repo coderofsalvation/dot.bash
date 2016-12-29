@@ -1,0 +1,2 @@
+.linenumbers()
+  cat -n | sed 's/\t/  /g'

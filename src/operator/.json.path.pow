@@ -1,4 +1,4 @@
-.json.get()
+.json.path()
   if ! -n $2
     echo "usage: .json.get <file.json> <key>"
     return 0

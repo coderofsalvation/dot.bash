@@ -1,11 +1,10 @@
 .pretty()
-  while IFS='' read line
-    # check json
-    first=${line:0:1}
-    last=${line:$((${#line}-1))}
-    if $first == "{" || $first == "["       
-      if $last == "}" || $last == "]"       
-        echo "$line" | json_pp
-        continue
-    echo "$line"       
-
+  local str=$(cat)
+  # check whether json
+  local first=${str:0:1}
+  local last=${str:$((${#str}-1))}
+  if $first == "{" || $first == "["       
+    if $last == "}" || $last == "]"       
+      echo "$str" | json_pp
+      return 0
+  echo "$str"
