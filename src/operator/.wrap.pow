@@ -2,6 +2,7 @@
   echo "$(printf "$*" "$(cat)" )" | .template
 
 completeWrap(cmd,cur)
+  echo ".wrap" >> /tmp/log.txt
   if $cmd == ".wrap"
     .complete '%s' true
     .complete '{"user":"${USER}@${HOSTNAME}","timestamp":"'$(date +%s)'","output":"%s"}' true
@@ -9,6 +10,3 @@ completeWrap(cmd,cur)
 
 complete -o noquote -F dotcomplete -o filenames .wrap
 .sub onComplete completeWrap # subscribe to onComplete event
-
-#dotcompletions['.wrap']=
-#dotcompletions['.wrap']+=' foo'

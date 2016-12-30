@@ -6,7 +6,11 @@ require_cmd 'curl'
     echo "usage: .json.<method> url [curl_arguments]"
     return 0
   shift; 
-  cat | curl -H 'Content-Type: application/json' "$@" "$url" --data @- 
+  dotcache url "$url"
+  if "$*" match "GET"
+    curl -s -L -H 'Content-Type: application/json' "$@" "$url"
+  else
+    cat | curl -s -L -H 'Content-Type: application/json' "$@" "$url" --data @- 
 
 .is.json(str)
   local json=0
@@ -16,6 +20,9 @@ require_cmd 'curl'
     if $last == "}" || $last == "]"       
       return 0
   return 1
+
+.json.get(url)
+  .json.request $url -X GET "$@"
 
 .json.post(url)
   local str=$(cat)
@@ -43,3 +50,17 @@ require_cmd 'curl'
   if ! .is.json "$str"
     str=$(echo "$str" | .wrap '{"user":"${USER}","host":"'$(hostname)'","date":"'$(date | .escape)'","timestamp":"'$(date +%s)'","output":"%s"}' )
   echo "$str" | .json.request $url -X OPTIONS "$@"
+
+
+completeJsonRequest(cmd,cur)
+  if $cmd =~ .json 
+    if ! $COMP_LINE match http
+      cat $(dotgetcachefile url) | mappipe addUrlToCompletion
+      return 0
+
+complete -o noquote -F dotcomplete .json.get
+complete -o noquote -F dotcomplete .json.post
+complete -o noquote -F dotcomplete .json.put
+complete -o noquote -F dotcomplete .json.delete
+
+.sub onComplete completeJsonRequest # subscribe to onComplete event

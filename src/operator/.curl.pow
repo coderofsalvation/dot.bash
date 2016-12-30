@@ -1,0 +1,80 @@
+require_cmd 'curl'
+
+export CURL_HOST=""
+
+_sethostfromurl(url)
+  CURL_HOST="${url/*\/\//}"
+  CURL_HOST="${CURL_HOST/:*/}"
+  CURL_HOST="${CURL_HOST/\/*/}"
+  export CURL_HOST=$CURL_HOST
+
+# curl wrapper 
+
+.curl()
+  if "$*" =~ http
+    local url="$*"
+    url="${url/* http/http}"
+    url="${url/ */}"
+    _sethostfromurl "$url"
+    if ! "$url" match ".html"
+      dotcache url "$url"
+  if "$*" match "--data "
+    local line="$*" 
+    dotcache $CURL_HOST".payload" "'${line/*--data /}'"
+  \curl -s "$@"
+
+alias curl=".curl"
+
+addUrlToCompletion(line)
+  .complete "$line"
+
+addUrlToCompletionLiteral(line)
+  .complete "$line" true
+
+completeCurl(cmd,cur,line)
+  echo "curl " >> /tmp/log.txt
+  if $cmd =~ curl
+    echo "cur='$cur' line='$line'" > /tmp/log.txt
+    if $line == "-H"
+      .complete "flop"
+      return 0
+    if ! $COMP_LINE match '-X'
+      .complete "-X" 
+      return 0
+    if ! $COMP_LINE match (POST|PUT|GET|DELETE|OPTIONS)
+      .complete GET
+      .complete POST
+      .complete PUT
+      .complete DELETE
+      .complete OPTIONS
+      return 0
+    if ! $COMP_LINE match http
+      cat $(dotgetcachefile url) | awk -F'/' '{ print $1"//"$2$3  }' | mappipe addUrlToCompletion
+      return 0
+    if $COMP_LINE match http
+      local lastchar=${cur:$((${#cur}-1)):1}
+      local url="${COMP_LINE/* http/http}"
+      url="${url/ */}"
+      _sethostfromurl "$url"
+      if $lastchar == "/"
+        fgrep "$url" $(dotgetcachefile url) &>/dev/null 
+        if $? == 0
+          fgrep "$url" $(dotgetcachefile url) | sed -r 's/(http:|https:)//g' | mappipe addUrlToCompletion 
+          return 0
+    if ! $COMP_LINE match '-H'
+      .complete "-H" 
+      .complete "--user" 
+      return 0
+    if ${#cur} == 0 && $COMP_LINE match '-H' && ! $COMP_LINE =~ 'Content-Type:'
+      .complete 'Content-Type:' true
+      return 0
+    if ! $COMP_LINE match '--data'
+      .complete "--data" 
+      return 0
+    if -f $(dotgetcachefile $CURL_HOST".payload") 
+      cat $(dotgetcachefile $CURL_HOST".payload") | mappipe addUrlToCompletionLiteral
+    return 0 
+
+complete -o noquote -F dotcomplete -o nospace -o filenames curl
+
+.sub onComplete completeCurl # subscribe to onComplete event

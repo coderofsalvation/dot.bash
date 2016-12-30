@@ -94,7 +94,8 @@ every command will be prepended with the pushed command
 # project scope:
 
 * wrappers 
-* small functions
+* small composable functions
+* add completion to popupar tools (like curl)
 * offline utilities  (with markdown as exception)
 * make use of installed devlangs (python/perl/awk)
 * bash golf 

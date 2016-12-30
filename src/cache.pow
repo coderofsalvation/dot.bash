@@ -1,0 +1,14 @@
+dotgetcachefile(type)
+  echo ~/.dot.bash.cache.$type
+
+dotcache(type,value,cachesize)
+  local cachefile=$(dotgetcachefile $type)
+  if empty $cachesize
+    cachesize=15
+  if ! -f $cachefile 
+    touch $cachefile && chmod 700 $cachefile
+  if fgrep -q "$value" $cachefile &>/dev/null
+    return 0
+  head -n15 $cachefile > $cachefile.tmp 
+  echo -e "$value\n$(<$cachefile.tmp)" > $cachefile
+  rm $cachefile.tmp

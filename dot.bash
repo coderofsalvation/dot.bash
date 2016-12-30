@@ -33,6 +33,11 @@ on ()
     done
 }
 
+empty () 
+{ 
+    [[ "${#1}" == 0 ]] && return 0 || return 1
+}
+
 isset () 
 { 
     [[ ! "${#1}" == 0 ]] && return 0 || return 1
@@ -221,9 +226,13 @@ json_decode ()
     eval "$code"
 }
 
-empty () 
+mappipe () 
 { 
-    [[ "${#1}" == 0 ]] && return 0 || return 1
+    func="$1";
+    shift;
+    ( while read -r line; do
+        $func "$@" "$line";
+    done )
 }
 
 
@@ -234,22 +243,49 @@ set +e # no need to exit shell on error
 } &>/dev/null
 
 
+dotgetcachefile(){
+  local type="${1}"
+  echo ~/.dot.bash.cache.$type
+}
+
+dotcache(){
+  local type="${1}"
+  local value="${2}"
+  local cachesize="${3}"
+  local cachefile=$(dotgetcachefile "$type")
+  if empty "$cachesize"; then
+    cachesize=15
+  fi
+  if [[ ! -f "$cachefile" ]]; then
+    touch "$cachefile" && chmod 700 "$cachefile"
+  fi
+  if fgrep -q "$value" "$cachefile" &>/dev/null; then
+    return 0
+  fi
+  head -n15 "$cachefile" > "$cachefile".tmp
+  echo -e "$value\n$(<$cachefile.tmp)" > "$cachefile"
+  rm "$cachefile".tmp
+}
+
 declare -A LISTENERS
 
 .pub(){
-  EVENT="$1"; shift; for listener in "${LISTENERS[$EVENT]}"; do eval "$listener "$@""; done
+  listeners=${LISTENERS[$1]}
+  shift;
+  for listener in $listeners; do
+    eval "$listener $@"
+  done
 }
 
 .sub(){
-  if ! test "${LISTENERS['$1']+isset}"; then
-    LISTENERS["$1"]=""
-  fi
+  #if ! test "${LISTENERS['$1']+isset}"
+  #  LISTENERS["$1"]=""
   LISTENERS["$1"]+="$2 " # we can get away with this since functionnames never contain spaces
 }
 
 
 _(){
-  if [[ -n "$CMD" ]]; then
+  if [[ -n $CMD ]]; then
     set -x; ${CMD} "$@"; set +x
   fi
 }
@@ -277,7 +313,7 @@ prompt_on_top(){
 }
 
 sticky_hook(){
-  if [[ "$STICK" == "0" || "$BASH_COMMAND" == "$PROMPT_COMMAND" || -n "$COMP_LINE" ]]; then
+  if [[ $STICK == "0" || "$BASH_COMMAND" == "$PROMPT_COMMAND" || -n "$COMP_LINE" ]]; then
     return
   fi
   if [[ "$(uname -a)" =~ "Darwin" ]]; then
@@ -312,7 +348,7 @@ trap sticky_hook DEBUG
   local first=${str:0:1}
   local last=${str:$((${#str}-1))}
   if [[ $first == "{" || $first == "[" ]]; then
-    if [[ "$last" == "}" || "$last" == "]" ]]; then
+    if [[ $last == "}" || $last == "]" ]]; then
       if which python2 &>/dev/null; then
         echo "$str" | python -mjson.tool
         return 0
@@ -321,7 +357,6 @@ trap sticky_hook DEBUG
         node -e "console.log(JSON.stringify(JSON.parse(process.argv[1]), null, 2));" "$str"
         return 0
       fi
-      #echo "$str" | json_pp
     fi
   fi
   echo "$str"
@@ -342,7 +377,8 @@ trap sticky_hook DEBUG
 completeWrap(){
   local cmd="${1}"
   local cur="${2}"
-  if [[ "$cmd" == ".wrap" ]]; then
+  echo ".wrap" >> /tmp/log.txt
+  if [[ $cmd == ".wrap" ]]; then
     .complete '%s' true
     .complete '{"user":"${USER}@${HOSTNAME}","timestamp":"'$(date +%s)'","output":"%s"}' true
     .complete '<output><text><![CDATA[%s]]></output>' true
@@ -351,7 +387,6 @@ completeWrap(){
 
 complete -o noquote -F dotcomplete -o filenames .wrap
 .sub onComplete completeWrap # subscribe to onComplete event
-
 
 .implode(){
   local separator="${1}"
@@ -363,13 +398,13 @@ complete -o noquote -F dotcomplete -o filenames .wrap
 }
 
 .template(){
-  if [[ -n "$1" ]]; then
-    printf "$1" "$(cat)" > "$tmpfile".input
+  if [[ -n $1 ]]; then
+    printf "$1" "$(cat)" > $tmpfile.input
   else
-    echo -n "$(cat)" > "$tmpfile".input
+    echo -n "$(cat)" > $tmpfile.input
   fi
   awk '{while(match($0,"[$]{[^}]*}")) {var=substr($0,RSTART+2,RLENGTH -3);gsub("[$]{"var"}",ENVIRON[var])}}1' < $tmpfile.input
-  rm "$tmpfile".input
+  rm $tmpfile.input
 }
 
 .markdown.render(){
@@ -378,32 +413,39 @@ complete -o noquote -F dotcomplete -o filenames .wrap
 }
 
 .json.path(){
-  if [[ ! -n "$2" ]]; then
-    echo "usage: .json.get <file.json> <key>"
+  declare -A json
+  {
+  if [[ ! -n $2 ]]; then
+    cat | json_decode json $1
     return 0
   fi
-  declare -A json
   if [[ ${1:0:1} == "{" ]]; then
-    echo "$1" | json_decode json "$2"
+    echo "$1" | json_decode json $2
   else
-    if [[ ! -n "$1" ]]; then
-      echo "file not found: "$1""
+    if [[ ! -n $1 ]]; then
+      echo "file not found: $1"
       return 0
     fi
-    cat "$1" | json_decode json "$2"
+    cat $1 | json_decode json $2
   fi
+  } 2>/dev/null
 }
 
 
 
 .json.request(){
   local url="${1}"
-  if [[ ! -n "$url" ]]; then
+  if [[ ! -n $url ]]; then
     echo "usage: .json.<method> url [curl_arguments]"
     return 0
   fi
   shift;
-  cat | curl -H 'Content-Type: application/json' "$@" "$url" --data @-
+  dotcache url "$url"
+  if [[ "$*" =~ "GET" ]]; then
+    curl -s -L -H 'Content-Type: application/json' "$@" "$url"
+  else
+    cat | curl -s -L -H 'Content-Type: application/json' "$@" "$url" --data @-
+  fi
 }
 
 .is.json(){
@@ -412,11 +454,16 @@ complete -o noquote -F dotcomplete -o filenames .wrap
   local first=${str:0:1}
   local last=${str:$((${#str}-1))}
   if [[ $first == "{" || $first == "[" ]]; then
-    if [[ "$last" == "}" || "$last" == "]" ]]; then
+    if [[ $last == "}" || $last == "]" ]]; then
       return 0
     fi
   fi
   return 1
+}
+
+.json.get(){
+  local url="${1}"
+  .json.request $url -X GET "$@"
 }
 
 .json.post(){
@@ -426,7 +473,7 @@ complete -o noquote -F dotcomplete -o filenames .wrap
   if ! .is.json "$str"; then
     str=$(echo "$str" | .wrap '{"user":"${USER}","host":"'$(hostname)'","date":"'$(date | .escape)'","timestamp":"'$(date +%s)'","output":"%s"}' )
   fi
-  echo "$str" | .json.request "$url" -X POST "$@"
+  echo "$str" | .json.request $url -X POST "$@"
 }
 
 .json.put(){
@@ -436,7 +483,7 @@ complete -o noquote -F dotcomplete -o filenames .wrap
   if ! .is.json "$str"; then
     str=$(echo "$str" | .wrap '{"user":"${USER}","host":"'$(hostname)'","date":"'$(date | .escape)'","timestamp":"'$(date +%s)'","output":"%s"}' )
   fi
-  echo "$str" | .json.request "$url" -X PUT "$@"
+  echo "$str" | .json.request $url -X PUT "$@"
 }
 
 .json.delete(){
@@ -446,7 +493,7 @@ complete -o noquote -F dotcomplete -o filenames .wrap
   if ! .is.json "$str"; then
     str=$(echo "$str" | .wrap '{"user":"${USER}","host":"'$(hostname)'","date":"'$(date | .escape)'","timestamp":"'$(date +%s)'","output":"%s"}' )
   fi
-  echo "$str" | .json.request "$url" -X DELETE "$@"
+  echo "$str" | .json.request $url -X DELETE "$@"
 }
 
 .json.options(){
@@ -455,30 +502,172 @@ complete -o noquote -F dotcomplete -o filenames .wrap
   if ! .is.json "$str"; then
     str=$(echo "$str" | .wrap '{"user":"${USER}","host":"'$(hostname)'","date":"'$(date | .escape)'","timestamp":"'$(date +%s)'","output":"%s"}' )
   fi
-  echo "$str" | .json.request "$url" -X OPTIONS "$@"
+  echo "$str" | .json.request $url -X OPTIONS "$@"
 }
+
+
+completeJsonRequest(){
+  local cmd="${1}"
+  local cur="${2}"
+  if [[ $cmd =~ .json ]]; then
+    if [[ ! $COMP_LINE =~ http ]]; then
+      cat $(dotgetcachefile url) | mappipe addUrlToCompletion
+      return 0
+    fi
+  fi
+}
+
+complete -o noquote -F dotcomplete .json.get
+complete -o noquote -F dotcomplete .json.post
+complete -o noquote -F dotcomplete .json.put
+complete -o noquote -F dotcomplete .json.delete
+
+.sub onComplete completeJsonRequest # subscribe to onComplete event
+
+
+export CURL_HOST=""
+
+_sethostfromurl(){
+  local url="${1}"
+  CURL_HOST="${url/*\/\//}"
+  CURL_HOST="${CURL_HOST/:*/}"
+  CURL_HOST="${CURL_HOST/\/*/}"
+  export CURL_HOST=$CURL_HOST
+}
+
+
+.curl(){
+  if [[ "$*" =~ http ]]; then
+    local url="$*"
+    url="${url/* http/http}"
+    url="${url/ */}"
+    _sethostfromurl "$url"
+    if [[ ! "$url" =~ ".html" ]]; then
+      dotcache url "$url"
+    fi
+  fi
+  if [[ "$*" =~ "--data " ]]; then
+    local line="$*"
+    dotcache $CURL_HOST".payload" "'${line/*--data /}'"
+  fi
+  \curl -s "$@"
+}
+
+alias curl=".curl"
+
+addUrlToCompletion(){
+  local line="${1}"
+  .complete "$line"
+}
+
+addUrlToCompletionLiteral(){
+  local line="${1}"
+  .complete "$line" true
+}
+
+completeCurl(){
+  local cmd="${1}"
+  local cur="${2}"
+  local line="${3}"
+  echo "curl " >> /tmp/log.txt
+  if [[ $cmd =~ curl ]]; then
+    echo "cur='$cur' line='$line'" > /tmp/log.txt
+    if [[ $line == "-H" ]]; then
+      .complete "flop"
+      return 0
+    fi
+    if [[ ! $COMP_LINE =~ '-X' ]]; then
+      .complete "-X"
+      return 0
+    fi
+    if [[ ! $COMP_LINE =~ (POST|PUT|GET|DELETE|OPTIONS) ]]; then
+      .complete GET
+      .complete POST
+      .complete PUT
+      .complete DELETE
+      .complete OPTIONS
+      return 0
+    fi
+    if [[ ! $COMP_LINE =~ http ]]; then
+      cat $(dotgetcachefile url) | awk -F'/' '{ print $1"//"$2$3  }' | mappipe addUrlToCompletion
+      return 0
+    fi
+    if [[ $COMP_LINE =~ http ]]; then
+      local lastchar=${cur:$((${#cur}-1)):1}
+      local url="${COMP_LINE/* http/http}"
+      url="${url/ */}"
+      _sethostfromurl "$url"
+      if [[ $lastchar == "/" ]]; then
+        fgrep "$url" $(dotgetcachefile url) &>/dev/null
+        if [[ $? == 0 ]]; then
+          fgrep "$url" $(dotgetcachefile url) | sed -r 's/(http:|https:)//g' | mappipe addUrlToCompletion
+          return 0
+        fi
+      fi
+    fi
+    if [[ ! $COMP_LINE =~ '-H' ]]; then
+      .complete "-H"
+      .complete "--user"
+      return 0
+    fi
+    if [[ ${#cur} == 0 && $COMP_LINE =~ '-H' && ! $COMP_LINE =~ 'Content-Type:' ]]; then
+      .complete 'Content-Type:' true
+      return 0
+    fi
+    if [[ ! $COMP_LINE =~ '--data' ]]; then
+      .complete "--data"
+      return 0
+    fi
+    if [[ -f $(dotgetcachefile $CURL_HOST".payload") ]]; then
+      cat $(dotgetcachefile $CURL_HOST".payload") | mappipe addUrlToCompletionLiteral
+    fi
+    return 0
+  fi
+}
+
+complete -o noquote -F dotcomplete -o nospace -o filenames curl
+
+.sub onComplete completeCurl # subscribe to onComplete event
 
 .complete(){
   local str="${1}"
   local quoted="${2}"
-  if ! empty "$quoted"; then
+  if ! empty $quoted; then
     str=$( echo "$str" | .escape | sed 's/ /\\ /g' | .wrap "\"'%s'\"" )
   fi
-  echo "$str" >> "$tmpfile".dotcompletions
+  echo "$str" >> $tmpfile.dotcompletions
 }
 
 dotcomplete(){
+  # speed-improv: autocorrect typos in mysqltables or bash directories
+  bind 'set completion-ignore-case on'
+  bind 'set show-all-if-ambiguous off'
+  #bind 'set TAB:menu-complete'
+  # do completions
   COMPREPLY=()   # Array variable storing the possible completions.
   cur=${COMP_WORDS[COMP_CWORD]}
   local cmd="${COMP_WORDS[0]}"
   {
   :>$tmpfile.dotcompletions # empty completions
-  .pub onComplete "$cmd" "$cur" # fill up completions
-  local dotcompletions="$(<$tmpfile.dotcompletions)"
+  .pub onComplete $cmd $cur # fill up completions
+  local dotcompletions="$(cat $tmpfile.dotcompletions | .implode ' ')"
   } &>/dev/null
-  if ! empty "$dotcompletions"; then
-    COMPREPLY=( $( compgen -W "$dotcompletions" -- "$cur" ) )
+  if ! empty $dotcompletions; then
+    COMPREPLY=( $( compgen -W "$dotcompletions" -- $cur ) )
   fi
   return 0
 }
+
+declare -A original_completions
+original_completions['ls']=$(complete -p | grep ' ls$' | awk '{print $3}')
+original_completions['cd']=$(complete -p | grep ' cd$' | awk '{print $3}')
+
+setdefaultcomplete(){
+  local cmd="${COMP_WORDS[0]}"
+  bind 'set show-all-if-ambiguous on'
+  ${original_completions[$cmd]}
+  return 0
+}
+
+complete -F setdefaultcomplete -o bashdefault ls
 

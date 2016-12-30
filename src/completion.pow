@@ -4,14 +4,35 @@
   echo "$str" >> $tmpfile.dotcompletions
 
 dotcomplete()
+  # speed-improv: autocorrect typos in mysqltables or bash directories
+  bind 'set completion-ignore-case on'
+  bind 'set show-all-if-ambiguous off'
+  #bind 'set TAB:menu-complete'
+  # do completions
   COMPREPLY=()   # Array variable storing the possible completions.
   cur=${COMP_WORDS[COMP_CWORD]}
   local cmd="${COMP_WORDS[0]}"
   {
   :>$tmpfile.dotcompletions # empty completions
   .pub onComplete $cmd $cur # fill up completions
-  local dotcompletions="$(<$tmpfile.dotcompletions)"
+  local dotcompletions="$(cat $tmpfile.dotcompletions | .implode ' ')"
   } &>/dev/null
   if ! empty $dotcompletions 
     COMPREPLY=( $( compgen -W "$dotcompletions" -- $cur ) )
   return 0
+
+#
+# dot.bash principe is to have inline autocompletion most time
+# patch original completions to revert back to 'show-all-if-ambigious-on' completion 
+#
+original_completions={}
+original_completions['ls']=$(complete -p | grep ' ls$' | awk '{print $3}')
+original_completions['cd']=$(complete -p | grep ' cd$' | awk '{print $3}')
+
+setdefaultcomplete()
+  local cmd="${COMP_WORDS[0]}"
+  bind 'set show-all-if-ambiguous on'
+  ${original_completions[$cmd]}
+  return 0
+
+complete -F setdefaultcomplete -o bashdefault ls 

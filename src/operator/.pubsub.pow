@@ -12,11 +12,14 @@
 LISTENERS={}
 
 .pub()
-  EVENT=$1; shift; for listener in "${LISTENERS[$EVENT]}"; do eval "$listener $@"; done
+  listeners=${LISTENERS[$1]}
+  shift; 
+  for listener in $listeners 
+    eval "$listener $@"
 
 .sub()
-  if ! test "${LISTENERS['$1']+isset}"
-    LISTENERS["$1"]=""
+  #if ! test "${LISTENERS['$1']+isset}"
+  #  LISTENERS["$1"]=""
   LISTENERS["$1"]+="$2 " # we can get away with this since functionnames never contain spaces
 
 #trap ".pub onExit SIGINT"  SIGINT

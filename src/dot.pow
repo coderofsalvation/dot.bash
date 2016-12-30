@@ -1,5 +1,6 @@
 #!/usr/bin/env powscript 
 require 'optimizations.pow'
+require 'cache.pow'
 require 'operator/.pubsub.pow'
 require 'operator/_.pow'
 require 'operator/.push.pow'
@@ -16,4 +17,5 @@ require 'operator/.template.pow'
 require 'operator/.markdown.render.pow'
 require 'operator/.json.path.pow'
 require 'operator/.json.request.pow'
+require 'operator/.curl.pow'
 require 'completion.pow'
