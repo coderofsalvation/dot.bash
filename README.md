@@ -1,4 +1,4 @@
-interactive bash toolbelt for webdevelopment hipsters
+interactive bash toolbelt for shell hipsters
 
 <img src="https://media.giphy.com/media/ZcqHDQUJm1nZC/giphy.gif" width="320"/>
 
